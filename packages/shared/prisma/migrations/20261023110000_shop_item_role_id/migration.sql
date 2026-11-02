@@ -1,0 +1,1 @@
+ALTER TABLE "ShopItem" ADD COLUMN "roleId" TEXT;

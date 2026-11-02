@@ -1,0 +1,45 @@
+{
+  "name": "discord-bots-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:economy": "npm run dev -w @discord-bots/economy-bot",
+    "dev:events": "npm run dev -w @discord-bots/event-master",
+    "start:economy": "npm run start -w @discord-bots/economy-bot",
+    "start:events": "npm run start -w @discord-bots/event-master",
+    "start:all": "concurrently -n economy,events -c blue,magenta \"npm:start:economy\" \"npm:start:events\"",
+    "commands:economy": "npm run commands -w @discord-bots/economy-bot",
+    "commands:events": "npm run commands -w @discord-bots/event-master",
+    "db:generate": "npm run db:generate -w @discord-bots/shared",
+    "db:migrate": "npm run db:migrate -w @discord-bots/shared",
+    "db:deploy": "npm run db:deploy -w @discord-bots/shared",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0"
+  }
+}

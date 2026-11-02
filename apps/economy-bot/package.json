@@ -1,0 +1,21 @@
+{
+  "name": "@discord-bots/economy-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty",
+    "dev": "npm run build -w @discord-bots/shared && tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "commands": "npm run build -w @discord-bots/shared && npm run build -w @discord-bots/economy-bot && node dist/deploy-commands.js"
+  },
+  "dependencies": {
+    "@discord-bots/shared": "*",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}

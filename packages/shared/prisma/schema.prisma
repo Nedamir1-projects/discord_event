@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model HealthCheck {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+}
+
+model BotStatus {
+  botId    String   @id
+  status   String
+  lastSeen DateTime @updatedAt
+}
+
+model GameEvent {
+  id             String               @id @default(cuid())
+  eventType      String               @default("general")
+  title          String
+  description    String               @default("")
+  status         String               @default("draft")
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  settings       Json                 @default("{}")
+  participations EventParticipation[]
+  boss           EventBoss?
+  halloween      HalloweenCampaign?
+  matrixNight    MatrixNight?
+}
+
+model EventParticipation {
+  id       String    @id @default(cuid())
+  eventId  String
+  userId   String
+  progress Int       @default(0)
+  joinedAt DateTime  @default(now())
+  race     String    @default("Mortal")
+  voiceSeconds Int   @default(0)
+  textMessages Int   @default(0)
+  bossDamage Int     @default(0)
+  faction   String   @default("Mortal")
+  rewardsSettled Boolean @default(false)
+  event    GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model EventBoss {
+  eventId       String   @id
+  name          String
+  health        Int
+  maxHealth     Int
+  phase         Int      @default(0)
+  phases        Json     @default("[]")
+  actions       Json     @default("[]")
+  damageRules   Json     @default("{}")
+  durationMs    Int
+  startedAt     DateTime?
+  endsAt        DateTime?
+  outcome       String   @default("pending")
+  event         GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actionsLog    BossAction[]
+  @@index([outcome, endsAt])
+}
+
+model BossAction {
+  interactionId String   @id
+  eventId       String
+  userId        String
+  faction       String
+  action        String
+  damage        Int
+  createdAt     DateTime @default(now())
+  boss          EventBoss @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  @@index([eventId, userId])
+  @@index([eventId, faction])
+}
+
+model Riddle {
+  id        String   @id @default(cuid())
+  title     String
+  prompt    String
+  answer    String
+  hints     String[] @default([])
+  reward    Int      @default(0)
+  status    String   @default("draft")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaignEventId String?
+  storyOrder Int?
+  opensAt DateTime?
+  closesAt DateTime?
+  isFinal Boolean @default(false)
+  campaign HalloweenCampaign? @relation(fields: [campaignEventId], references: [eventId], onDelete: Cascade)
+  attempts RiddleAttempt[]
+
+  @@index([campaignEventId, storyOrder])
+}
+
+model Quest {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  conditions   String    @default("")
+  reward       Int       @default(0)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  dependencies String[]  @default([])
+  status       String    @default("draft")
+  createdBy    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  campaignEventId String?
+  campaign HalloweenCampaign? @relation(fields: [campaignEventId], references: [eventId], onDelete: Cascade)
+  completions HalloweenQuestProgress[]
+
+  @@index([campaignEventId, startsAt, endsAt])
+}
+
+model PumpkinMessage {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  channelId String
+  authorId  String
+  reward    Int      @default(0)
+  status    String   @default("registered")
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model HalloweenCampaign {
+  eventId String @id
+  timezone String @default("UTC")
+  finalPuzzleId String?
+  createdAt DateTime @default(now())
+  event GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  chapters HalloweenChapter[]
+  participants HalloweenParticipant[]
+  secretRoles HalloweenSecretRole[]
+  polls HalloweenPoll[]
+  riddles Riddle[]
+  quests Quest[]
+}
+
+model HalloweenChapter {
+  id String @id @default(cuid())
+  eventId String
+  order Int
+  title String
+  content String
+  opensAt DateTime?
+  closesAt DateTime?
+  createdAt DateTime @default(now())
+  campaign HalloweenCampaign @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+
+  @@unique([eventId, order])
+  @@index([eventId, opensAt, closesAt])
+}
+
+model HalloweenParticipant {
+  eventId String
+  userId String
+  joinedAt DateTime @default(now())
+  lastChapterOrder Int @default(0)
+  campaign HalloweenCampaign @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model HalloweenSecretRole {
+  eventId String
+  userId String
+  role String
+  assignedAt DateTime @default(now())
+  campaign HalloweenCampaign @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model RiddleAttempt {
+  riddleId String
+  userId String
+  attempts Int @default(0)
+  hintsUsed Int @default(0)
+  solvedAt DateTime?
+  lastAttemptAt DateTime @default(now())
+  riddle Riddle @relation(fields: [riddleId], references: [id], onDelete: Cascade)
+
+  @@id([riddleId, userId])
+}
+
+model HalloweenQuestProgress {
+  questId String
+  userId String
+  completedAt DateTime @default(now())
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@id([questId, userId])
+}
+
+model HalloweenPoll {
+  id String @id @default(cuid())
+  eventId String
+  title String
+  prompt String
+  options String[]
+  opensAt DateTime?
+  closesAt DateTime?
+  status String @default("active")
+  createdAt DateTime @default(now())
+  campaign HalloweenCampaign @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  votes HalloweenVote[]
+
+  @@index([eventId, status, closesAt])
+}
+
+model HalloweenVote {
+  pollId String
+  userId String
+  choice String
+  votedAt DateTime @default(now())
+  poll HalloweenPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@id([pollId, userId])
+  @@index([pollId, choice])
+}
+
+model SharedPumpkin {
+  id String @id @default(cuid())
+  slot Int @unique
+  pumpkinNumber Int @default(17)
+  guildId String
+  channelId String
+  messageId String @unique
+  allowedAuthorIds String[]
+  allowedChannelIds String[]
+  reward Int
+  active Boolean @default(true)
+  registeredAt DateTime @default(now())
+  finds SharedPumpkinFind[]
+
+  @@index([guildId, channelId, messageId])
+}
+
+model SharedPumpkinFind {
+  pumpkinId String
+  userId String
+  foundAt DateTime @default(now())
+  pumpkin SharedPumpkin @relation(fields: [pumpkinId], references: [id], onDelete: Cascade)
+
+  @@id([pumpkinId, userId])
+  @@index([userId, foundAt])
+}
+
+model PumpkinCheckError {
+  id String @id @default(cuid())
+  userId String
+  pumpkinId String?
+  guildId String?
+  channelId String?
+  messageId String?
+  code String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([code, createdAt])
+}
+
+model MatrixNight {
+  eventId       String   @id
+  snapshotId    String?  @unique
+  guildId       String
+  phase         String   @default("waiting")
+  durationMs    BigInt   @default(4406400000)
+  countdownMs   BigInt   @default(0)
+  deadlineAt    DateTime?
+  pausedAt      DateTime?
+  pausedPhase   String?
+  remainingMs   BigInt?
+  config        Json     @default("{}")
+  outcome       String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  event         GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participants  MatrixParticipant[]
+  jails         MatrixJail[]
+  missions      MatrixMission[]
+  snapshots     MatrixSnapshot[]
+
+  @@index([phase, deadlineAt])
+}
+
+model MatrixParticipant {
+  eventId   String
+  userId    String
+  role      String
+  faction   String?
+  assignedAt DateTime @default(now())
+  night     MatrixNight @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  @@id([eventId, userId])
+  @@index([eventId, role])
+}
+
+model MatrixJail {
+  id                String   @id @default(cuid())
+  eventId           String
+  operationKey      String   @unique
+  actorId           String
+  targetId          String
+  reason            String
+  startedAt         DateTime @default(now())
+  scheduledEndAt    DateTime
+  releasedAt        DateTime?
+  result            String   @default("pending")
+  releaseResult     String?
+  night             MatrixNight @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  @@index([eventId, targetId, releasedAt])
+  @@index([scheduledEndAt, releasedAt])
+}
+
+model MatrixMission {
+  id             String   @id @default(cuid())
+  eventId        String
+  title          String
+  description    String
+  faction        String
+  targetProgress Int
+  progress       Int      @default(0)
+  config         Json     @default("{}")
+  status         String   @default("open")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  night          MatrixNight @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  actions        MatrixMissionAction[]
+  @@index([eventId, faction, status])
+}
+
+model MatrixMissionAction {
+  interactionId String @id
+  missionId     String
+  userId        String
+  amount        Int
+  progressAfter Int
+  createdAt     DateTime @default(now())
+  mission       MatrixMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+}
+
+model MatrixSnapshot {
+  id              String   @id @default(cuid())
+  eventId         String
+  guildId         String
+  schemaVersion   Int
+  status          String   @default("prepared")
+  createdAt       DateTime @default(now())
+  plannedChanges  Json
+  roleStates      Json
+  memberRoleState Json
+  outcomes        Json     @default("[]")
+  restoredAt      DateTime?
+  night           MatrixNight @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  operations      MatrixOperation[]
+  @@index([eventId, createdAt])
+}
+
+model MatrixOperation {
+  id            String   @id @default(cuid())
+  snapshotId    String
+  operationKey  String   @unique
+  kind          String
+  targetId      String
+  roleId        String
+  desiredAdd    Boolean
+  status        String   @default("pending")
+  attempts      Int      @default(0)
+  lastError     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  snapshot      MatrixSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  @@index([snapshotId, status])
+}
+
+model PlayerProfile {
+  userId    String   @id
+  candies   Int      @default(0)
+  progress  Json     @default("{}")
+  race      String   @default("Mortal")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BalanceTransaction {
+  id          String   @id @default(cuid())
+  operationId String   @unique
+  userId      String
+  amount      Int
+  reason      String
+  createdAt   DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model Race {
+  id          String  @id
+  price       Int     @default(0)
+  description String  @default("")
+  available   Boolean @default(true)
+}
+
+model ShopItem {
+  id          String  @id
+  name        String
+  description String  @default("")
+  price       Int
+  available   Boolean @default(true)
+  limit       Int?
+  roleId      String?
+  effect      Json    @default("{}")
+  purchases   Purchase[]
+}
+
+model Purchase {
+  id          String   @id @default(cuid())
+  operationId String   @unique
+  userId      String
+  itemId      String
+  quantity    Int      @default(1)
+  amount      Int
+  createdAt   DateTime @default(now())
+  item        ShopItem @relation(fields: [itemId], references: [id])
+  @@index([userId, itemId])
+}
+
+model PendingOperation {
+  operationId String   @id
+  userId      String
+  amount      Int
+  reason      String
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VoiceProgress {
+  userId String @id
+  seconds Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model TextProgress {
+  userId String @id
+  messages Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityMessage {
+  messageId String @id
+  userId String
+  contentHash String
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model GameEffect {
+  id String @id
+  ownerId String
+  targetId String
+  kind String
+  expiresAt DateTime
+  data Json @default("{}")
+  createdAt DateTime @default(now())
+  @@index([targetId, expiresAt])
+}
+
+model AbilityCooldown {
+  key String @id
+  readyAt DateTime
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  objectType String
+  objectId   String
+  result     String
+  details    Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+}

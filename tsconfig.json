@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./apps/economy-bot" },
+    { "path": "./apps/event-master" }
+  ]
+}
